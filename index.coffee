@@ -114,13 +114,13 @@ class FeatureVideoView
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
 document.addEventListener 'DOMContentLoaded', ->
-  video = document.getElementById('video')
-  view =  new FeatureVideoView(video)
-  document.body.appendChild(view.element)
+  video.addEventListener 'loadeddata', ->
+    video = document.getElementById('video')
+    view =  new FeatureVideoView(video)
+    document.body.appendChild(view.element)
 
-  nextFrame = ->
-    view.render()
-    requestAnimationFrame nextFrame
-
+    nextFrame = ->
+      view.render()
+      requestAnimationFrame nextFrame
+    nextFrame()
   video.play()
-  nextFrame()
