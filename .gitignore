@@ -30,3 +30,5 @@ build/Release
 node_modules
 
 sample_video.webm
+index.js
+index.js.map
