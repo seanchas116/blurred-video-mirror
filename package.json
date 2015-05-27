@@ -9,7 +9,7 @@
     "server": "static"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "coffee-script": "^1.9.2",
     "node-static": "^0.7.6"
