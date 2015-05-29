@@ -208,7 +208,13 @@ class FeatureVideoView
 
   constructor: (@videoElement) ->
     @element = document.createElement('canvas')
-    gl = @gl = @element.getContext('webgl', {depth: false})
+    gl = @gl = @element.getContext 'webgl',
+      alpha: false
+      depth: false
+      stencil: false
+      antialias: false
+      premultipliedAlpha: true
+
     unless gl
       return
 
@@ -276,7 +282,7 @@ class FeatureVideoView
 
     @framebuffers[1].using =>
       @framebufferRect.render()
-    
+
     @blurShader.setHorizontal(false)
     @blurShader.setTexture(@framebuffers[1].texture, 2)
 
