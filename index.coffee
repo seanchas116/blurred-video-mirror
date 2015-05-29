@@ -43,6 +43,11 @@ class Shader
 
     shader
 
+  setTexture: (texture, index) ->
+    gl = @gl
+    texture.register(index)
+    gl.uniform1i(@uTexture, index)
+
   use: ->
     @gl.useProgram(@program)
 
@@ -240,15 +245,12 @@ class FeatureVideoView
     gl = @gl
     @shader.use()
     @videoTexture.video(@videoElement)
-
-    @videoTexture.register(0)
-    gl.uniform1i(@shader.uTexture, 0)
+    @shader.setTexture(@videoTexture, 0)
 
     @framebuffer.using =>
       @videoRect.render()
 
-    @framebuffer.texture.register(1)
-    gl.uniform1i(@shader.uTexture, 1)
+    @shader.setTexture(@framebuffer.texture, 1)
 
     @framebufferRect.render()
 
