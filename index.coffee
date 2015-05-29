@@ -50,6 +50,68 @@ class NormalShader
     gl.enableVertexAttribArray(@aVertexCoord)
     gl.enableVertexAttribArray(@aTextureCoord)
 
+
+class BlurShader
+  constructor: (gl) ->
+    vertexShader = """
+      attribute vec2 aVertexCoord;
+      attribute vec2 aTextureCoord;
+      varying vec2 vTextureCoord;
+
+      void main(void) {
+        gl_Position = vec4(aVertexCoord, 0.0, 1.0);
+        vTextureCoord = aTextureCoord;
+      }
+    """
+    fragmentShader = """
+      precision mediump float;
+      #define RADIUS 20
+      uniform sampler2D uTexture;
+      uniform vec2 uTextureSize;
+      uniform vec2 uTextureSizeInv;
+      uniform float uWeights[RADIUS + 1];
+      uniform bool uIsHorizontal;
+      varying highp vec2 vTextureCoord;
+
+      void main(void) {
+        vec2 centerPos = vTextureCoord * uTextureSize;
+        vec4 result = vec4(0);
+
+        if (uIsHorizontal) {
+          vec2 base = centerPos - vec2(float(RADIUS / 2), 0.0);
+          for (int i = 0; i <= RADIUS; ++i) {
+            var pos = base + vec2(float(i), 0.0);
+            result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
+          }
+        } else {
+          vec2 base = centerPos - vec2(0.0, float(RADIUS / 2));
+          for (int i = 0; i < RADIUS; ++i) {
+            var pos = base + vec2(0.0, float(i));
+            result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
+          }
+        }
+        gl_FragColor = result;
+      }
+    """
+    super(gl, vertexShader, fragmentShader)
+
+    @uTexture = gl.getUniformLocation(program, "uTexture")
+    @uTextureSize = gl.getUniformLocation(program, "uTextureSize")
+    @uTextureSizeInv = gl.getUniformLocation(program, "uTextureSizeInv")
+    @uWeights = gl.getUniformLocation(program, "uWeights")
+    @aVertexCoord = gl.getAttribLocation(program, "aVertexCoord")
+    @aTextureCoord = gl.getAttribLocation(program, "aTextureCoord")
+
+    # 2 * gamma = radius ( = 20)
+    radius = 20
+    weights = for i in [0..radius]
+      r = radius * 0.5
+      r2 = r * r
+      x = i - r
+      1 / Math.sqrt(2 * Math.PI * r2) * Math.exp(-(x * x * 0.5 / r2))
+
+    gl.uniform1fv(@uWeights,new Float32Array(weights))
+
 class FeatureVideoView
 
   constructor: (@videoElement) ->
