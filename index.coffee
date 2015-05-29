@@ -111,6 +111,27 @@ class BlurShader
 
     gl.uniform1fv(@uWeights,new Float32Array(weights))
 
+class Framebuffer
+
+  constructor: (@gl) ->
+    gl = @gl
+
+    @framebuffer = gl.createFramebuffer()
+    @using =>
+      @texture = gl.createTexture()
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, @texture, 0)
+
+  resize: (width, height) ->
+    gl = @gl
+    gl.bindTexture(gl.TEXTURE_2D, @texture)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+
+  using: (f) ->
+    gl = @gl
+    gl.bindFramebuffer(gl.FRAMEBUFFER, @framebuffer)
+    f()
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
 class FeatureVideoView
 
   constructor: (@videoElement) ->
@@ -125,6 +146,22 @@ class FeatureVideoView
 
     @videoRectBuffer = gl.createBuffer()
     @videoTexture = @createTexture(@videoElement)
+    @framebuffer = new Framebuffer(gl)
+    @framebufferRectBuffer = gl.createBuffer()
+
+    framebufferRectData = [
+      1, -1,
+      1, 0,
+      1, 1,
+      1, 1,
+      -1, -1,
+      0, 0,
+      -1, 1,
+      0, 1
+    ]
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, @framebufferRectBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(framebufferRectData), gl.STATIC_DRAW)
 
     onResize = =>
       @resize window.innerWidth, @videoElement.videoHeight
@@ -170,6 +207,8 @@ class FeatureVideoView
     gl.bindBuffer(gl.ARRAY_BUFFER, @videoRectBuffer)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(videoRectData), gl.STATIC_DRAW)
 
+    @framebuffer.resize(@width, @height)
+
   render: ->
     gl = @gl
     @shader.use()
@@ -182,6 +221,13 @@ class FeatureVideoView
 
     gl.vertexAttribPointer(@shader.aVertexCoord, 2, gl.FLOAT, false, 4 * 4, 0)
     gl.vertexAttribPointer(@shader.aTextureCoord, 2, gl.FLOAT, false, 4 * 4, 4 * 2)
+
+    @framebuffer.using =>
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, @framebufferRectBuffer)
+    gl.activeTexture(gl.TEXTURE1)
+    gl.uniform1i(@shader.uTexture, 1)
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
