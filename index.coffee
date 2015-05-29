@@ -252,16 +252,19 @@ class FeatureVideoView
     gl.viewport(0, 0, @width, @height)
 
     {videoWidth, videoHeight} = @videoElement
-    widthRatio = videoWidth / @width
+    heightScale = @height / videoHeight
 
     @videoRect.update [
-      widthRatio, -1
+      1, -heightScale
       1, 0
-      widthRatio, 1
+
+      1, heightScale
       1, 1
-      -widthRatio, -1,
+
+      -1, -heightScale
       0, 0
-      -widthRatio, 1,
+
+      -1, heightScale
       0, 1
     ]
 
