@@ -83,15 +83,15 @@ class BlurShader extends Shader
     @uIsHorizontal = gl.getUniformLocation(@program, "uIsHorizontal")
     @use()
 
-    # 2 * gamma = radius ( = 20)
+    # 2 * sigma = radius ( = 20)
     weights = do ->
-      d = BLUR_RADIUS * 0.5
-      d2 = d * d
+      s = BLUR_RADIUS * 0.5
+      s2 = s * s
       for x in [-BLUR_RADIUS..BLUR_RADIUS]
-        1 / Math.sqrt(2 * Math.PI * d2) * Math.exp(-(x * x * 0.5 / d2))
+        1 / Math.sqrt(2 * Math.PI * s2) * Math.exp(-(x * x * 0.5 / s2))
 
     sum = weights.reduce((x, y) => x + y)
-    weights.map((x) => x / sum)
+    weights = weights.map((x) => x / sum)
 
     gl.uniform1fv(@uWeights, new Float32Array(weights))
     @setHorizontal(true)
