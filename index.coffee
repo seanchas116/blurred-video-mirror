@@ -55,16 +55,6 @@ class Shader
 class BlurShader extends Shader
   BLUR_RADIUS = 20
 
-  @::vertexShader = """
-    attribute vec2 aVertexCoord;
-    attribute vec2 aTextureCoord;
-    varying mediump vec2 vTextureCoord;
-
-    void main(void) {
-      gl_Position = vec4(aVertexCoord, 0.0, 1.0);
-      vTextureCoord = aTextureCoord;
-    }
-  """
   @::fragmentShader = """
     precision mediump float;
     #define RADIUS #{BLUR_RADIUS}
