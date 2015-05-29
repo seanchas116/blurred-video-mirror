@@ -53,6 +53,8 @@ class Shader
     @gl.useProgram(@program)
 
 class BlurShader extends Shader
+  BLUR_RADIUS = 20
+
   @::vertexShader = """
     attribute vec2 aVertexCoord;
     attribute vec2 aTextureCoord;
@@ -65,11 +67,11 @@ class BlurShader extends Shader
   """
   @::fragmentShader = """
     precision mediump float;
-    #define RADIUS 20
+    #define RADIUS #{BLUR_RADIUS}
     uniform sampler2D uTexture;
     uniform vec2 uTextureSize;
     uniform vec2 uTextureSizeInv;
-    uniform float uWeights[RADIUS + 1];
+    uniform float uWeights[2 * RADIUS + 1];
     uniform bool uIsHorizontal;
     varying highp vec2 vTextureCoord;
 
@@ -78,14 +80,14 @@ class BlurShader extends Shader
       vec4 result = vec4(0);
 
       if (uIsHorizontal) {
-        vec2 base = centerPos - vec2(float(RADIUS / 2), 0.0);
-        for (int i = 0; i <= RADIUS; ++i) {
+        vec2 base = centerPos - vec2(float(RADIUS), 0.0);
+        for (int i = -RADIUS; i <= RADIUS; ++i) {
           vec2 pos = base + vec2(float(i), 0.0);
           result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
         }
       } else {
-        vec2 base = centerPos - vec2(0.0, float(RADIUS / 2));
-        for (int i = 0; i < RADIUS; ++i) {
+        vec2 base = centerPos - vec2(0.0, float(RADIUS));
+        for (int i = -RADIUS; i < RADIUS; ++i) {
           vec2 pos = base + vec2(0.0, float(i));
           result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
         }
@@ -104,11 +106,13 @@ class BlurShader extends Shader
 
     # 2 * gamma = radius ( = 20)
     radius = 20
-    weights = for i in [0..radius]
+    weights = for x in [-BLUR_RADIUS..BLUR_RADIUS]
       r = radius * 0.5
       r2 = r * r
-      x = i - r
       1 / Math.sqrt(2 * Math.PI * r2) * Math.exp(-(x * x * 0.5 / r2))
+
+    sum = weights.reduce((x, y) => x + y)
+    weights.map((x) => x / sum)
 
     gl.uniform1fv(@uWeights, new Float32Array(weights))
     @setHorizontal(true)
