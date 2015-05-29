@@ -102,6 +102,7 @@ class BlurShader extends Shader
     @uTextureSize = gl.getUniformLocation(@program, "uTextureSize")
     @uTextureSizeInv = gl.getUniformLocation(@program, "uTextureSizeInv")
     @uWeights = gl.getUniformLocation(@program, "uWeights")
+    @uIsHorizontal = gl.getUniformLocation(@program, "uIsHorizontal")
     @use()
 
     # 2 * gamma = radius ( = 20)
