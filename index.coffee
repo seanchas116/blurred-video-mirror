@@ -260,7 +260,6 @@ class FeatureVideoView
 
   render: ->
     gl = @gl
-    @shader.use()
     @videoTexture.video(@videoElement)
     @shader.setTexture(@videoTexture, 0)
 
