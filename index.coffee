@@ -1,7 +1,7 @@
 class Shader
   constructor: (@gl, vertexShader, fragmentShader) ->
     gl = @gl
-    @program = gl.createProgram()
+    program = @program = gl.createProgram()
     gl.attachShader(program, @compile(vertexShader, gl.VERTEX_SHADER))
     gl.attachShader(program, @compile(fragmentShader, gl.FRAGMENT_SHADER))
     gl.linkProgram(program)
@@ -20,7 +20,7 @@ class Shader
   use: ->
     @gl.useProgram(@program)
 
-class NormalShader
+class NormalShader extends Shader
   constructor: (gl) ->
     vertexShader = """
       attribute vec2 aVertexCoord;
@@ -43,10 +43,9 @@ class NormalShader
     """
     super(gl, vertexShader, fragmentShader)
 
-
-    @uTexture = gl.getUniformLocation(program, "uTexture")
-    @aVertexCoord = gl.getAttribLocation(program, "aVertexCoord")
-    @aTextureCoord = gl.getAttribLocation(program, "aTextureCoord")
+    @uTexture = gl.getUniformLocation(@program, "uTexture")
+    @aVertexCoord = gl.getAttribLocation(@program, "aVertexCoord")
+    @aTextureCoord = gl.getAttribLocation(@program, "aTextureCoord")
     gl.enableVertexAttribArray(@aVertexCoord)
     gl.enableVertexAttribArray(@aTextureCoord)
 
