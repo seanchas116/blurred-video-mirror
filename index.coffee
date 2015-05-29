@@ -106,11 +106,11 @@ class BlurShader extends Shader
     @use()
 
     # 2 * gamma = radius ( = 20)
-    radius = 20
-    weights = for x in [-BLUR_RADIUS..BLUR_RADIUS]
-      r = radius * 0.5
-      r2 = r * r
-      1 / Math.sqrt(2 * Math.PI * r2) * Math.exp(-(x * x * 0.5 / r2))
+    weights = do ->
+      d = BLUR_RADIUS * 0.5
+      d2 = d * d
+      for x in [-BLUR_RADIUS..BLUR_RADIUS]
+        1 / Math.sqrt(2 * Math.PI * d2) * Math.exp(-(x * x * 0.5 / d2))
 
     sum = weights.reduce((x, y) => x + y)
     weights.map((x) => x / sum)
