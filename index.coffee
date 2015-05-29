@@ -191,7 +191,7 @@ class Framebuffer
     f()
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-class FeatureVideoView
+class BlurredVideoMirror
 
   constructor: (@videoElement) ->
     @element = document.createElement('canvas')
@@ -294,7 +294,7 @@ class FeatureVideoView
 document.addEventListener 'DOMContentLoaded', ->
   video.addEventListener 'loadeddata', ->
     video = document.getElementById('video')
-    view =  new FeatureVideoView(video)
+    view =  new BlurredVideoMirror(video)
     document.body.appendChild(view.element)
     view.play()
 
