@@ -278,14 +278,23 @@ class FeatureVideoView
 
     @framebufferRect.render()
 
+  nextFrame: ->
+    # 30 fps
+    if @frameCount % 2 == 0
+      @render()
+    @frameCount += 1
+    requestAnimationFrame =>
+      @nextFrame()
+
+  play: ->
+    @frameCount = 0
+    @nextFrame()
+
 document.addEventListener 'DOMContentLoaded', ->
   video.addEventListener 'loadeddata', ->
     video = document.getElementById('video')
     view =  new FeatureVideoView(video)
     document.body.appendChild(view.element)
+    view.play()
 
-    nextFrame = ->
-      view.render()
-      requestAnimationFrame nextFrame
-    nextFrame()
   video.play()
