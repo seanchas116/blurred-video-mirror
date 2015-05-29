@@ -1,15 +1,32 @@
-class FeatureVideoView
+class Shader
+  constructor: (@gl, vertexShader, fragmentShader) ->
+    gl = @gl
+    @program = gl.createProgram()
+    gl.attachShader(program, @compile(vertexShader, gl.VERTEX_SHADER))
+    gl.attachShader(program, @compile(fragmentShader, gl.FRAGMENT_SHADER))
+    gl.linkProgram(program)
 
-  constructor: (@videoElement) ->
-    @element = document.createElement('canvas')
-    gl = @gl = @element.getContext('webgl')
-    unless gl
-      return
+  compile: (script, type) ->
+    gl = @gl
+    shader = gl.createShader(type)
+    gl.shaderSource(shader, script)
+    gl.compileShader(shader)
 
+    if !gl.getShaderParameter(shader, gl.COMPILE_STATUS)
+      console.warn(gl.getShaderInfoLog(shader))
+
+    shader
+
+  use: ->
+    @gl.useProgram(@program)
+
+class NormalShader
+  constructor: (gl) ->
     vertexShader = """
       attribute vec2 aVertexCoord;
       attribute vec2 aTextureCoord;
       varying vec2 vTextureCoord;
+
       void main(void) {
         gl_Position = vec4(aVertexCoord, 0.0, 1.0);
         vTextureCoord = aTextureCoord;
@@ -19,12 +36,30 @@ class FeatureVideoView
       precision mediump float;
       uniform sampler2D uTexture;
       varying highp vec2 vTextureCoord;
+
       void main(void) {
         gl_FragColor = texture2D(uTexture, vTextureCoord);
       }
     """
+    super(gl, vertexShader, fragmentShader)
 
-    @setupShader vertexShader, fragmentShader
+
+    @uTexture = gl.getUniformLocation(program, "uTexture")
+    @aVertexCoord = gl.getAttribLocation(program, "aVertexCoord")
+    @aTextureCoord = gl.getAttribLocation(program, "aTextureCoord")
+    gl.enableVertexAttribArray(@aVertexCoord)
+    gl.enableVertexAttribArray(@aTextureCoord)
+
+class FeatureVideoView
+
+  constructor: (@videoElement) ->
+    @element = document.createElement('canvas')
+    gl = @gl = @element.getContext('webgl')
+    unless gl
+      return
+
+    @shader = new NormalShader(gl)
+
     gl.clearColor(0,0,0,1)
 
     @videoRectBuffer = gl.createBuffer()
@@ -74,42 +109,18 @@ class FeatureVideoView
     gl.bindBuffer(gl.ARRAY_BUFFER, @videoRectBuffer)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(videoRectData), gl.STATIC_DRAW)
 
-  compileShader: (script, type) ->
-    gl = @gl
-    shader = gl.createShader(type)
-    gl.shaderSource(shader, script)
-    gl.compileShader(shader)
-
-    if !gl.getShaderParameter(shader, gl.COMPILE_STATUS)
-      console.warn(gl.getShaderInfoLog(shader))
-
-    shader
-
-  setupShader: (vertexShader, fragmentShader) ->
-    gl = @gl
-    program = gl.createProgram()
-    gl.attachShader(program, @compileShader(vertexShader, gl.VERTEX_SHADER))
-    gl.attachShader(program, @compileShader(fragmentShader, gl.FRAGMENT_SHADER))
-    gl.linkProgram(program)
-    gl.useProgram(program)
-
-    @uTexture = gl.getUniformLocation(program, "uTexture")
-    @aVertexCoord = gl.getAttribLocation(program, "aVertexCoord")
-    @aTextureCoord = gl.getAttribLocation(program, "aTextureCoord")
-    gl.enableVertexAttribArray(@aVertexCoord)
-    gl.enableVertexAttribArray(@aTextureCoord)
-
   render: ->
     gl = @gl
+    @shader.use()
     @updateTexture(@videoTexture, @videoElement)
     gl.bindBuffer(gl.ARRAY_BUFFER, @videoRectBuffer)
 
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, @videoTexture)
-    gl.uniform1i(@uTexture, 0)
+    gl.uniform1i(@shader.uTexture, 0)
 
-    gl.vertexAttribPointer(@aVertexCoord, 2, gl.FLOAT, false, 4 * 4, 0)
-    gl.vertexAttribPointer(@aTextureCoord, 2, gl.FLOAT, false, 4 * 4, 4 * 2)
+    gl.vertexAttribPointer(@shader.aVertexCoord, 2, gl.FLOAT, false, 4 * 4, 0)
+    gl.vertexAttribPointer(@shader.aTextureCoord, 2, gl.FLOAT, false, 4 * 4, 4 * 2)
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
