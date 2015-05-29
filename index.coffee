@@ -110,14 +110,19 @@ class Framebuffer
     gl = @gl
 
     @framebuffer = gl.createFramebuffer()
-    @using =>
-      @texture = gl.createTexture()
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, @texture, 0)
+    @texture = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, @texture)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
   resize: (width, height) ->
     gl = @gl
-    gl.bindTexture(gl.TEXTURE_2D, @texture)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+    @using =>
+      gl.bindTexture(gl.TEXTURE_2D, @texture)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, @texture, 0)
 
   using: (f) ->
     gl = @gl
@@ -129,7 +134,7 @@ class FeatureVideoView
 
   constructor: (@videoElement) ->
     @element = document.createElement('canvas')
-    gl = @gl = @element.getContext('webgl')
+    gl = @gl = @element.getContext('webgl', {depth: false})
     unless gl
       return
 
@@ -220,7 +225,11 @@ class FeatureVideoView
 
     gl.bindBuffer(gl.ARRAY_BUFFER, @framebufferRectBuffer)
     gl.activeTexture(gl.TEXTURE1)
+    gl.bindTexture(gl.TEXTURE_2D, @framebuffer.texture)
     gl.uniform1i(@shader.uTexture, 1)
+
+    gl.vertexAttribPointer(@shader.aVertexCoord, 2, gl.FLOAT, false, 4 * 4, 0)
+    gl.vertexAttribPointer(@shader.aTextureCoord, 2, gl.FLOAT, false, 4 * 4, 4 * 2)
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
