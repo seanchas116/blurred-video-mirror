@@ -127,12 +127,10 @@ class Model
     gl.vertexAttribPointer(@shader.aTextureCoord, 2, gl.FLOAT, false, 4 * 4, 4 * 2)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, @length)
 
-class Framebuffer
+class Texture
 
   constructor: (@gl) ->
     gl = @gl
-
-    @framebuffer = gl.createFramebuffer()
     @texture = gl.createTexture()
     gl.bindTexture(gl.TEXTURE_2D, @texture)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
@@ -140,12 +138,41 @@ class Framebuffer
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
+  empty: (@width, @height) ->
+    @use()
+    gl = @gl
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, @width, @height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+
+  video: (elem) ->
+    @use()
+    gl = @gl
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, elem)
+    @width = elem.videoWidth
+    @height = elem.videoHeight
+
+  use: ->
+    gl = @gl
+    gl.bindTexture(gl.TEXTURE_2D, @texture)
+
+  register: (@index) ->
+    gl = @gl
+    gl.activeTexture(gl.TEXTURE0 + @index)
+    @use()
+
+class Framebuffer
+
+  constructor: (@gl) ->
+    gl = @gl
+
+    @framebuffer = gl.createFramebuffer()
+    @texture = new Texture(gl)
+
   resize: (width, height) ->
     gl = @gl
     @using =>
-      gl.bindTexture(gl.TEXTURE_2D, @texture)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, @texture, 0)
+      @texture.empty(width, height)
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, @texture.texture, 0)
 
   using: (f) ->
     gl = @gl
@@ -166,7 +193,7 @@ class FeatureVideoView
     gl.clearColor(0,0,0,1)
 
     @videoRect = new Model(gl, @shader)
-    @videoTexture = @createTexture(@videoElement)
+    @videoTexture = new Texture(gl)
     @framebuffer = new Framebuffer(gl)
     @framebufferRect = new Model(gl, @shader)
 
@@ -186,22 +213,6 @@ class FeatureVideoView
 
     window.addEventListener 'resize', onResize
     onResize()
-
-  createTexture: (elem) ->
-    gl = @gl
-    texture = gl.createTexture()
-    gl.bindTexture(gl.TEXTURE_2D, texture)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    texture
-
-  updateTexture: (texture, elem) ->
-    gl = @gl
-    gl.bindTexture(gl.TEXTURE_2D, texture)
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, elem)
 
   resize: (@width, @height) ->
     gl = @gl
@@ -228,17 +239,15 @@ class FeatureVideoView
   render: ->
     gl = @gl
     @shader.use()
-    @updateTexture(@videoTexture, @videoElement)
+    @videoTexture.video(@videoElement)
 
-    gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, @videoTexture)
+    @videoTexture.register(0)
     gl.uniform1i(@shader.uTexture, 0)
 
     @framebuffer.using =>
       @videoRect.render()
 
-    gl.activeTexture(gl.TEXTURE1)
-    gl.bindTexture(gl.TEXTURE_2D, @framebuffer.texture)
+    @framebuffer.texture.register(1)
     gl.uniform1i(@shader.uTexture, 1)
 
     @framebufferRect.render()
