@@ -58,7 +58,7 @@ class BlurShader extends Shader
   @::vertexShader = """
     attribute vec2 aVertexCoord;
     attribute vec2 aTextureCoord;
-    varying vec2 vTextureCoord;
+    varying mediump vec2 vTextureCoord;
 
     void main(void) {
       gl_Position = vec4(aVertexCoord, 0.0, 1.0);
@@ -69,37 +69,25 @@ class BlurShader extends Shader
     precision mediump float;
     #define RADIUS #{BLUR_RADIUS}
     uniform sampler2D uTexture;
-    uniform vec2 uTextureSize;
     uniform vec2 uTextureSizeInv;
     uniform float uWeights[2 * RADIUS + 1];
     uniform bool uIsHorizontal;
-    varying highp vec2 vTextureCoord;
+    varying vec2 vTextureCoord;
 
     void main(void) {
-      vec2 centerPos = vTextureCoord * uTextureSize;
       vec4 result = vec4(0);
+      vec2 orientation = uIsHorizontal ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
 
-      if (uIsHorizontal) {
-        vec2 base = centerPos - vec2(float(RADIUS), 0.0);
-        for (int i = -RADIUS; i <= RADIUS; ++i) {
-          vec2 pos = base + vec2(float(i), 0.0);
-          result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
-        }
-      } else {
-        vec2 base = centerPos - vec2(0.0, float(RADIUS));
-        for (int i = -RADIUS; i < RADIUS; ++i) {
-          vec2 pos = base + vec2(0.0, float(i));
-          result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
-        }
+      for (int i = -RADIUS; i <= RADIUS; ++i) {
+        vec2 pos = vTextureCoord + orientation * float(i) * uTextureSizeInv;
+        result += texture2D(uTexture, pos) * uWeights[i];
       }
       gl_FragColor = result;
-      //gl_FragColor = vec4(0.5);
     }
   """
   constructor: (gl) ->
     super(gl)
 
-    @uTextureSize = gl.getUniformLocation(@program, "uTextureSize")
     @uTextureSizeInv = gl.getUniformLocation(@program, "uTextureSizeInv")
     @uWeights = gl.getUniformLocation(@program, "uWeights")
     @uIsHorizontal = gl.getUniformLocation(@program, "uIsHorizontal")
@@ -121,7 +109,6 @@ class BlurShader extends Shader
   setTexture: (texture, index) ->
     super(texture, index)
     gl = @gl
-    gl.uniform2f(@uTextureSize, texture.width, texture.height)
     gl.uniform2f(@uTextureSizeInv, 1 / texture.width, 1 / texture.height)
 
   setHorizontal: (whether) ->
