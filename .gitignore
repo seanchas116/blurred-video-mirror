@@ -30,5 +30,6 @@ build/Release
 node_modules
 
 sample_video.webm
+sample_video.mp4
 index.js
 index.js.map
