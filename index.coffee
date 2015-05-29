@@ -219,7 +219,7 @@ class FeatureVideoView
 
     @videoRect = new Model(gl, @shader)
     @videoTexture = new Texture(gl)
-    @framebuffer = new Framebuffer(gl)
+    @framebuffers = [new Framebuffer(gl), new Framebuffer(gl)]
     @framebufferRect = new Model(gl, @blurShader)
 
     @framebufferRect.update [
@@ -259,7 +259,8 @@ class FeatureVideoView
       0, 1
     ]
 
-    @framebuffer.resize(@width, @height)
+    @framebuffers[0].resize(@width, @height)
+    @framebuffers[1].resize(@width, @height)
 
   render: ->
     gl = @gl
@@ -267,10 +268,17 @@ class FeatureVideoView
     @videoTexture.video(@videoElement)
     @shader.setTexture(@videoTexture, 0)
 
-    @framebuffer.using =>
+    @framebuffers[0].using =>
       @videoRect.render()
 
-    @blurShader.setTexture(@framebuffer.texture, 1)
+    @blurShader.setHorizontal(true)
+    @blurShader.setTexture(@framebuffers[0].texture, 1)
+
+    @framebuffers[1].using =>
+      @framebufferRect.render()
+    
+    @blurShader.setHorizontal(false)
+    @blurShader.setTexture(@framebuffers[1].texture, 2)
 
     @framebufferRect.render()
 
