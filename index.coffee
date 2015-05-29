@@ -202,7 +202,9 @@ class FeatureVideoView
       antialias: false
       premultipliedAlpha: true
 
-    unless gl
+    @isGLSupported = gl?
+
+    unless @isGLSupported
       return
 
     @shader = new Shader(gl)
