@@ -1,10 +1,36 @@
 class Shader
-  constructor: (@gl, vertexShader, fragmentShader) ->
+  @::vertexShader = """
+    attribute vec2 aVertexCoord;
+    attribute vec2 aTextureCoord;
+    varying vec2 vTextureCoord;
+
+    void main(void) {
+      gl_Position = vec4(aVertexCoord, 0.0, 1.0);
+      vTextureCoord = aTextureCoord;
+    }
+  """
+  @::fragmentShader = """
+    precision mediump float;
+    uniform sampler2D uTexture;
+    varying highp vec2 vTextureCoord;
+
+    void main(void) {
+      gl_FragColor = texture2D(uTexture, vTextureCoord);
+    }
+  """
+
+  constructor: (@gl) ->
     gl = @gl
     program = @program = gl.createProgram()
-    gl.attachShader(program, @compile(vertexShader, gl.VERTEX_SHADER))
-    gl.attachShader(program, @compile(fragmentShader, gl.FRAGMENT_SHADER))
+    gl.attachShader(program, @compile(@vertexShader, gl.VERTEX_SHADER))
+    gl.attachShader(program, @compile(@fragmentShader, gl.FRAGMENT_SHADER))
     gl.linkProgram(program)
+
+    @uTexture = gl.getUniformLocation(@program, "uTexture")
+    @aVertexCoord = gl.getAttribLocation(@program, "aVertexCoord")
+    @aTextureCoord = gl.getAttribLocation(@program, "aTextureCoord")
+    gl.enableVertexAttribArray(@aVertexCoord)
+    gl.enableVertexAttribArray(@aTextureCoord)
 
   compile: (script, type) ->
     gl = @gl
@@ -20,86 +46,53 @@ class Shader
   use: ->
     @gl.useProgram(@program)
 
-class NormalShader extends Shader
-  constructor: (gl) ->
-    vertexShader = """
-      attribute vec2 aVertexCoord;
-      attribute vec2 aTextureCoord;
-      varying vec2 vTextureCoord;
+class BlurShader extends Shader
+  @::vertexShader = """
+    attribute vec2 aVertexCoord;
+    attribute vec2 aTextureCoord;
+    varying vec2 vTextureCoord;
 
-      void main(void) {
-        gl_Position = vec4(aVertexCoord, 0.0, 1.0);
-        vTextureCoord = aTextureCoord;
-      }
-    """
-    fragmentShader = """
-      precision mediump float;
-      uniform sampler2D uTexture;
-      varying highp vec2 vTextureCoord;
+    void main(void) {
+      gl_Position = vec4(aVertexCoord, 0.0, 1.0);
+      vTextureCoord = aTextureCoord;
+    }
+  """
+  @::fragmentShader = """
+    precision mediump float;
+    #define RADIUS 20
+    uniform sampler2D uTexture;
+    uniform vec2 uTextureSize;
+    uniform vec2 uTextureSizeInv;
+    uniform float uWeights[RADIUS + 1];
+    uniform bool uIsHorizontal;
+    varying highp vec2 vTextureCoord;
 
-      void main(void) {
-        gl_FragColor = texture2D(uTexture, vTextureCoord);
-      }
-    """
-    super(gl, vertexShader, fragmentShader)
+    void main(void) {
+      vec2 centerPos = vTextureCoord * uTextureSize;
+      vec4 result = vec4(0);
 
-    @uTexture = gl.getUniformLocation(@program, "uTexture")
-    @aVertexCoord = gl.getAttribLocation(@program, "aVertexCoord")
-    @aTextureCoord = gl.getAttribLocation(@program, "aTextureCoord")
-    gl.enableVertexAttribArray(@aVertexCoord)
-    gl.enableVertexAttribArray(@aTextureCoord)
-
-
-class BlurShader
-  constructor: (gl) ->
-    vertexShader = """
-      attribute vec2 aVertexCoord;
-      attribute vec2 aTextureCoord;
-      varying vec2 vTextureCoord;
-
-      void main(void) {
-        gl_Position = vec4(aVertexCoord, 0.0, 1.0);
-        vTextureCoord = aTextureCoord;
-      }
-    """
-    fragmentShader = """
-      precision mediump float;
-      #define RADIUS 20
-      uniform sampler2D uTexture;
-      uniform vec2 uTextureSize;
-      uniform vec2 uTextureSizeInv;
-      uniform float uWeights[RADIUS + 1];
-      uniform bool uIsHorizontal;
-      varying highp vec2 vTextureCoord;
-
-      void main(void) {
-        vec2 centerPos = vTextureCoord * uTextureSize;
-        vec4 result = vec4(0);
-
-        if (uIsHorizontal) {
-          vec2 base = centerPos - vec2(float(RADIUS / 2), 0.0);
-          for (int i = 0; i <= RADIUS; ++i) {
-            var pos = base + vec2(float(i), 0.0);
-            result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
-          }
-        } else {
-          vec2 base = centerPos - vec2(0.0, float(RADIUS / 2));
-          for (int i = 0; i < RADIUS; ++i) {
-            var pos = base + vec2(0.0, float(i));
-            result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
-          }
+      if (uIsHorizontal) {
+        vec2 base = centerPos - vec2(float(RADIUS / 2), 0.0);
+        for (int i = 0; i <= RADIUS; ++i) {
+          var pos = base + vec2(float(i), 0.0);
+          result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
         }
-        gl_FragColor = result;
+      } else {
+        vec2 base = centerPos - vec2(0.0, float(RADIUS / 2));
+        for (int i = 0; i < RADIUS; ++i) {
+          var pos = base + vec2(0.0, float(i));
+          result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
+        }
       }
-    """
-    super(gl, vertexShader, fragmentShader)
+      gl_FragColor = result;
+    }
+  """
+  constructor: (gl) ->
+    super(gl)
 
-    @uTexture = gl.getUniformLocation(program, "uTexture")
     @uTextureSize = gl.getUniformLocation(program, "uTextureSize")
     @uTextureSizeInv = gl.getUniformLocation(program, "uTextureSizeInv")
     @uWeights = gl.getUniformLocation(program, "uWeights")
-    @aVertexCoord = gl.getAttribLocation(program, "aVertexCoord")
-    @aTextureCoord = gl.getAttribLocation(program, "aTextureCoord")
 
     # 2 * gamma = radius ( = 20)
     radius = 20
@@ -140,7 +133,7 @@ class FeatureVideoView
     unless gl
       return
 
-    @shader = new NormalShader(gl)
+    @shader = new Shader(gl)
 
     gl.clearColor(0,0,0,1)
 
