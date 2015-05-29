@@ -44,6 +44,7 @@ class Shader
     shader
 
   setTexture: (texture, index) ->
+    @use()
     gl = @gl
     texture.register(index)
     gl.uniform1i(@uTexture, index)
@@ -79,25 +80,27 @@ class BlurShader extends Shader
       if (uIsHorizontal) {
         vec2 base = centerPos - vec2(float(RADIUS / 2), 0.0);
         for (int i = 0; i <= RADIUS; ++i) {
-          var pos = base + vec2(float(i), 0.0);
+          vec2 pos = base + vec2(float(i), 0.0);
           result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
         }
       } else {
         vec2 base = centerPos - vec2(0.0, float(RADIUS / 2));
         for (int i = 0; i < RADIUS; ++i) {
-          var pos = base + vec2(0.0, float(i));
+          vec2 pos = base + vec2(0.0, float(i));
           result += texture2D(uTexture, pos * uTextureSizeInv) * uWeights[i];
         }
       }
       gl_FragColor = result;
+      //gl_FragColor = vec4(0.5);
     }
   """
   constructor: (gl) ->
     super(gl)
 
-    @uTextureSize = gl.getUniformLocation(program, "uTextureSize")
-    @uTextureSizeInv = gl.getUniformLocation(program, "uTextureSizeInv")
-    @uWeights = gl.getUniformLocation(program, "uWeights")
+    @uTextureSize = gl.getUniformLocation(@program, "uTextureSize")
+    @uTextureSizeInv = gl.getUniformLocation(@program, "uTextureSizeInv")
+    @uWeights = gl.getUniformLocation(@program, "uWeights")
+    @use()
 
     # 2 * gamma = radius ( = 20)
     radius = 20
@@ -107,7 +110,18 @@ class BlurShader extends Shader
       x = i - r
       1 / Math.sqrt(2 * Math.PI * r2) * Math.exp(-(x * x * 0.5 / r2))
 
-    gl.uniform1fv(@uWeights,new Float32Array(weights))
+    gl.uniform1fv(@uWeights, new Float32Array(weights))
+    @setHorizontal(true)
+
+  setTexture: (texture, index) ->
+    super(texture, index)
+    gl = @gl
+    gl.uniform2f(@uTextureSize, texture.width, texture.height)
+    gl.uniform2f(@uTextureSizeInv, 1 / texture.width, 1 / texture.height)
+
+  setHorizontal: (whether) ->
+    @use()
+    @gl.uniform1i(@uIsHorizontal, whether)
 
 class Model
 
@@ -194,13 +208,14 @@ class FeatureVideoView
       return
 
     @shader = new Shader(gl)
+    @blurShader = new BlurShader(gl)
 
     gl.clearColor(0,0,0,1)
 
     @videoRect = new Model(gl, @shader)
     @videoTexture = new Texture(gl)
     @framebuffer = new Framebuffer(gl)
-    @framebufferRect = new Model(gl, @shader)
+    @framebufferRect = new Model(gl, @blurShader)
 
     @framebufferRect.update [
       1, -1,
@@ -250,7 +265,7 @@ class FeatureVideoView
     @framebuffer.using =>
       @videoRect.render()
 
-    @shader.setTexture(@framebuffer.texture, 1)
+    @blurShader.setTexture(@framebuffer.texture, 1)
 
     @framebufferRect.render()
 
