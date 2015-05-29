@@ -104,6 +104,29 @@ class BlurShader extends Shader
 
     gl.uniform1fv(@uWeights,new Float32Array(weights))
 
+class Model
+
+  constructor: (@gl, @shader) ->
+    gl = @gl
+    @buffer = gl.createBuffer()
+
+  update: (data) ->
+    @use()
+    gl = @gl
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW)
+    @length = data.length / 4
+
+  use: ->
+    gl = @gl
+    gl.bindBuffer(gl.ARRAY_BUFFER, @buffer)
+
+  render: ->
+    gl = @gl
+    @use()
+    gl.vertexAttribPointer(@shader.aVertexCoord, 2, gl.FLOAT, false, 4 * 4, 0)
+    gl.vertexAttribPointer(@shader.aTextureCoord, 2, gl.FLOAT, false, 4 * 4, 4 * 2)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, @length)
+
 class Framebuffer
 
   constructor: (@gl) ->
@@ -142,12 +165,12 @@ class FeatureVideoView
 
     gl.clearColor(0,0,0,1)
 
-    @videoRectBuffer = gl.createBuffer()
+    @videoRect = new Model(gl, @shader)
     @videoTexture = @createTexture(@videoElement)
     @framebuffer = new Framebuffer(gl)
-    @framebufferRectBuffer = gl.createBuffer()
+    @framebufferRect = new Model(gl, @shader)
 
-    framebufferRectData = [
+    @framebufferRect.update [
       1, -1,
       1, 0,
       1, 1,
@@ -157,9 +180,6 @@ class FeatureVideoView
       -1, 1,
       0, 1
     ]
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, @framebufferRectBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(framebufferRectData), gl.STATIC_DRAW)
 
     onResize = =>
       @resize window.innerWidth, @videoElement.videoHeight
@@ -192,7 +212,7 @@ class FeatureVideoView
     {videoWidth, videoHeight} = @videoElement
     widthRatio = videoWidth / @width
 
-    videoRectData = [
+    @videoRect.update [
       widthRatio, -1
       1, 0
       widthRatio, 1
@@ -202,8 +222,6 @@ class FeatureVideoView
       -widthRatio, 1,
       0, 1
     ]
-    gl.bindBuffer(gl.ARRAY_BUFFER, @videoRectBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(videoRectData), gl.STATIC_DRAW)
 
     @framebuffer.resize(@width, @height)
 
@@ -211,27 +229,19 @@ class FeatureVideoView
     gl = @gl
     @shader.use()
     @updateTexture(@videoTexture, @videoElement)
-    gl.bindBuffer(gl.ARRAY_BUFFER, @videoRectBuffer)
 
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, @videoTexture)
     gl.uniform1i(@shader.uTexture, 0)
 
-    gl.vertexAttribPointer(@shader.aVertexCoord, 2, gl.FLOAT, false, 4 * 4, 0)
-    gl.vertexAttribPointer(@shader.aTextureCoord, 2, gl.FLOAT, false, 4 * 4, 4 * 2)
-
     @framebuffer.using =>
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+      @videoRect.render()
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, @framebufferRectBuffer)
     gl.activeTexture(gl.TEXTURE1)
     gl.bindTexture(gl.TEXTURE_2D, @framebuffer.texture)
     gl.uniform1i(@shader.uTexture, 1)
 
-    gl.vertexAttribPointer(@shader.aVertexCoord, 2, gl.FLOAT, false, 4 * 4, 0)
-    gl.vertexAttribPointer(@shader.aTextureCoord, 2, gl.FLOAT, false, 4 * 4, 4 * 2)
-
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    @framebufferRect.render()
 
 document.addEventListener 'DOMContentLoaded', ->
   video.addEventListener 'loadeddata', ->
